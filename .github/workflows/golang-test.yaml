@@ -1,0 +1,41 @@
+name: golang-test
+
+on:
+  workflow_call:
+    inputs:
+      golang_version:
+        description: "Go version"
+        required: true
+        type: string
+        default: "1.22.2"
+    outputs:
+      workflow_run_id:
+        description: "The ID of the workflow run"
+        value: ${{ github.run_id }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.golang_version }}
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Lint
+        run: |
+          go vet ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: |
+          go test -v ./... -coverprofile=coverage.out
+          go tool cover -func=coverage.out

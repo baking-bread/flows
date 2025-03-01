@@ -1,0 +1,40 @@
+name: golang-release
+
+on:
+  workflow_call:
+    inputs:
+      golang_version:
+        description: "Go version"
+        required: true
+        type: string
+        default: "1.22.2"
+      artifact_run_id:
+        description: "The ID of the workflow run that produced the artifact"
+        required: true
+        type: string
+    outputs:
+      workflow_run_id:
+        description: "The ID of the workflow run"
+        value: ${{ github.run_id }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact_run_id }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**
+          generate_release_notes: true

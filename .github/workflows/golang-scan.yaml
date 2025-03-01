@@ -1,0 +1,45 @@
+name: golang-scan
+
+on:
+  workflow_call:
+    inputs:
+      golang_version:
+        description: "Go version"
+        required: true
+        type: string
+        default: "1.22.2"
+    outputs:
+      workflow_run_id:
+        description: "The ID of the workflow run"
+        value: ${{ github.run_id }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.golang_version }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "cyclonedx"
+          exit-code: "1"
+          ignore-unfixed: true
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+          output: "sbom.cdx.json"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom.cdx.json

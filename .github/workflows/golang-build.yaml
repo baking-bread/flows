@@ -1,0 +1,62 @@
+name: golang-build
+
+on:
+  workflow_call:
+    inputs:
+      golang_version:
+        description: "Go version"
+        required: true
+        type: string
+        default: "1.22.2"
+      executable_name:
+        description: "Name of the executable"
+        required: true
+        type: string
+    outputs:
+      workflow_run_id:
+        description: "The ID of the workflow run"
+        value: ${{ github.run_id }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            artifact_name: ${{ inputs.executable_name }}_windows_amd64.exe
+            goos: windows
+            goarch: amd64
+          - os: linux
+            artifact_name: ${{ inputs.executable_name }}_linux_amd64
+            goos: linux
+            goarch: amd64
+          - os: darwin
+            artifact_name: ${{ inputs.executable_name }}_darwin_amd64
+            goos: darwin
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.golang_version }}
+
+      - name: Build for ${{ matrix.os }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p bin
+          go build -o bin/${{ matrix.artifact_name }} main.go
+          cd bin && sha256sum ${{ matrix.artifact_name }} > ${{ matrix.artifact_name }}.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: |
+            bin/${{ matrix.artifact_name }}
+            bin/${{ matrix.artifact_name }}.sha256
